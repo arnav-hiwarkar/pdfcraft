@@ -2560,3 +2560,35 @@ fn enhancing_a_scan_re_renders_the_page_shown() {
     assert!(app.scan_clean_run.is_none());
     assert_eq!(app.views[i].pages.get(&0).unwrap().tag, STALE_TAG, "the old raster is re-rendered");
 }
+
+#[test]
+fn scratch_wheel_scroll_with_window_focused_and_unfocused() {
+    fn scrolled(focused: bool) -> f32 {
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 900.0)).build_eframe(|_cc| {
+            let mut app = PdfCraftApp::new();
+            let bytes = app.session.create_blank(612.0, 792.0, 20).unwrap();
+            app.open_bytes("scroll.pdf", None, bytes.as_ref().clone()).unwrap();
+            app
+        });
+        h.input_mut().focused = focused;
+        h.run_steps(4);
+        let center = h.state().views[0].viewport_rect().center();
+        h.hover_at(center);
+        h.run_steps(2);
+        let before = h.state().views[0].last_scroll.y;
+        h.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: vec2(0.0, -400.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
+        });
+        h.run_steps(40);
+        let after = h.state().views[0].last_scroll.y;
+        println!("RESULT window_focused={focused} scroll_before={before} scroll_after={after} input_focused_at_end={}", h.input().focused);
+        after - before
+    }
+    let with_focus = scrolled(true);
+    let without_focus = scrolled(false);
+    println!("RESULT scrolled_px focused={with_focus} unfocused={without_focus}");
+}

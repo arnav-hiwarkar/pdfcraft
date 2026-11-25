@@ -1,0 +1,38 @@
+name: scratch unfocused wheel scroll
+on:
+  push:
+    branches: [scratch/unfocused-wheel-scroll]
+permissions:
+  contents: read
+jobs:
+  release-app:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y xvfb xdotool openbox xterm imagemagick libgl1-mesa-dri mesa-vulkan-drivers libxkbcommon-x11-0 libgtk-3-0
+      - name: Download PdfCraft v0.22.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.22.0 -R storytold/pdfcraft -p 'pdfcraft-0.22.0-linux-x86_64.tar.gz' -p SHA256SUMS.txt
+          grep ' pdfcraft-0.22.0-linux-x86_64.tar.gz$' SHA256SUMS.txt | sha256sum -c -
+          mkdir app && tar -xzf pdfcraft-0.22.0-linux-x86_64.tar.gz -C app
+          find app -maxdepth 3 -type f -perm -u+x | head
+          echo "APP=$(find app -type f -name pdfcraft -perm -u+x | head -1)" >> "$GITHUB_ENV"
+      - run: python3 .github/scratch/make_pdf.py sample.pdf
+      - run: xvfb-run -s '-screen 0 1400x900x24' .github/scratch/unfocused_scroll.sh
+      - if: always()
+        run: cat app.log || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots/
+  unit-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libgtk-3-dev mesa-vulkan-drivers
+      - run: cargo test -p pdfcraft-ui-egui --lib scratch_wheel_scroll -- --nocapture 2>&1 | tee test.log
+      - if: always()
+        run: grep RESULT test.log | tee -a "$GITHUB_STEP_SUMMARY" || true
