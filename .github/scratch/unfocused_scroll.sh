@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
+set -x
 out=shots
 mkdir -p "$out"
 openbox & sleep 2
@@ -12,7 +13,9 @@ for _ in $(seq 60); do
   sleep 1
 done
 [ -n "$app_win" ] || { echo "app window never appeared"; cat app.log; exit 1; }
-other_win=$(xdotool search --name OTHERAPP | head -1)
+other_win=$(xdotool search --name OTHERAPP 2>/dev/null | head -1)
+xwininfo -root -tree | grep -iE "pdf|sample|OTHERAPP" || true
+[ -n "$other_win" ] || { echo "xterm window missing"; exit 1; }
 xdotool windowsize "$app_win" 700 900 windowmove "$app_win" 0 0
 xdotool windowsize "$other_win" 700 900 windowmove "$other_win" 700 0
 sleep 6
