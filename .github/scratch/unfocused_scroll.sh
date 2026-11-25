@@ -6,15 +6,16 @@ mkdir -p "$out"
 openbox & sleep 2
 xterm -geometry 80x40+700+0 -title OTHERAPP & sleep 2
 "$APP" sample.pdf > app.log 2>&1 &
+app_pid=$!
 app_win=""
 for _ in $(seq 60); do
-  app_win=$(xdotool search --onlyvisible --name 'sample|PdfCraft' 2>/dev/null | head -1 || true)
+  app_win=$(xdotool search --onlyvisible --pid "$app_pid" 2>/dev/null | head -1 || true)
   [ -n "$app_win" ] && break
   sleep 1
 done
 [ -n "$app_win" ] || { echo "app window never appeared"; cat app.log; exit 1; }
-other_win=$(xdotool search --name OTHERAPP 2>/dev/null | head -1)
-xwininfo -root -tree | grep -iE "pdf|sample|OTHERAPP" || true
+other_win=$(xdotool search --onlyvisible --class xterm 2>/dev/null | head -1)
+xwininfo -root -tree | grep -E '"' || true
 [ -n "$other_win" ] || { echo "xterm window missing"; exit 1; }
 xdotool windowsize "$app_win" 700 900 windowmove "$app_win" 0 0
 xdotool windowsize "$other_win" 700 900 windowmove "$other_win" 700 0
